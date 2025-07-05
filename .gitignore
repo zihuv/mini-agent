@@ -10,5 +10,6 @@ venv/
 env/
 ENV/
 
-# db
+# other
 *.db
+.idea/

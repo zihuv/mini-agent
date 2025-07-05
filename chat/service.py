@@ -5,12 +5,13 @@ from typing import Generator
 from uuid import uuid4
 from sqlalchemy.orm import Session
 from .models import Message, Conversation
+from config import Config
 
 class ChatService:
     def __init__(self):
         self.client = OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            base_url=os.getenv("OPENAI_BASE_URL")
+            api_key=Config.OPENAI_API_KEY,
+            base_url=Config.OPENAI_BASE_URL
         )
         self.model = os.getenv("OPENAI_MODEL", "deepseek-chat")
 
