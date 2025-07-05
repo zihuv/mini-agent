@@ -1,13 +1,11 @@
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
-from chat.database import engine, Base, get_db
-from chat.auth.router import router as auth_router
-from chat.router import router as chat_router
 from dotenv import load_dotenv
+from database import engine, Base
+from auth.router import router as auth_router
+from chat.router import router as chat_router
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)

@@ -1,11 +1,10 @@
 from openai import OpenAI
 import os
 import json
-from typing import Dict, Generator
+from typing import Generator
 from uuid import uuid4
 from sqlalchemy.orm import Session
-from datetime import datetime
-from .models import Message, Conversation, User
+from .models import Message, Conversation
 
 class ChatService:
     def __init__(self):
@@ -15,7 +14,12 @@ class ChatService:
         )
         self.model = os.getenv("OPENAI_MODEL", "deepseek-chat")
 
-    def get_or_create_conversation(self, db: Session, user_id: int, conversation_id: str = None) -> Conversation:
+    def get_or_create_conversation(
+        self, 
+        db: Session, 
+        user_id: int, 
+        conversation_id: str = None
+    ) -> Conversation:
         if conversation_id:
             conversation = db.query(Conversation).filter(
                 Conversation.id == conversation_id,

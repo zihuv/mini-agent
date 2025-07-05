@@ -3,16 +3,7 @@ from typing import List, Optional
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from .database import Base
-
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
-    conversations = relationship("Conversation", back_populates="user")
+from database import Base
 
 class Conversation(Base):
     __tablename__ = "conversations"
@@ -22,7 +13,7 @@ class Conversation(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    user = relationship("User", back_populates="conversations")
+    user = relationship("auth.models.User", back_populates="conversations")
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
 
 class Message(Base):
@@ -36,6 +27,7 @@ class Message(Base):
     
     conversation = relationship("Conversation", back_populates="messages")
 
+# API Models
 class ChatRequest(BaseModel):
     prompt: str
     conversation_id: Optional[str] = None
