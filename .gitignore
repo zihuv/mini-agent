@@ -9,3 +9,6 @@ venv/
 .venv/
 env/
 ENV/
+
+# db
+*.db

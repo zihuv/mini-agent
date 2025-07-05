@@ -1,14 +1,16 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, Depends
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from chat.database import engine, Base, get_db
+from chat.auth.router import router as auth_router
+from chat.router import router as chat_router
 from dotenv import load_dotenv
-import os
-import json
-import asyncio
-from openai import OpenAI
+
+# 创建数据库表
+Base.metadata.create_all(bind=engine)
 
 # 加载环境变量
 load_dotenv()
@@ -28,48 +30,13 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# OpenAI client 配置
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-    base_url=os.getenv("OPENAI_BASE_URL")
-)
-MODEL = os.getenv("OPENAI_MODEL", "deepseek-chat")
-
-class ChatRequest(BaseModel):
-    prompt: str
+# 注册路由
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(chat_router, prefix="/api", tags=["chat"])
 
 @app.get("/")
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
-
-def generate_response(prompt: str):
-    try:
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant"},
-                {"role": "user", "content": prompt}
-            ],
-            stream=True
-        )
-        
-        for chunk in response:
-            if chunk and chunk.choices and chunk.choices[0].delta.content:
-                yield f"data: {json.dumps({'text': chunk.choices[0].delta.content})}\n\n"
-    except Exception as e:
-        error_message = str(e)
-        print(f"Error in generate_response: {error_message}")  # 服务器端日志
-        yield f"data: {json.dumps({'error': error_message})}\n\n"
-
-@app.post("/chat")
-async def chat_endpoint(request: ChatRequest):
-    if not request.prompt:
-        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
-    
-    return StreamingResponse(
-        generate_response(request.prompt),
-        media_type="text/event-stream"
-    )
 
 if __name__ == "__main__":
     import uvicorn
