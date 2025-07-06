@@ -96,6 +96,7 @@ function showChat() {
 function initializeUI() {
     if (accessToken) {
         showChat();
+        setupFileUpload();  // 添加这一行
     } else {
         showLogin();
     }
@@ -118,33 +119,27 @@ async function sendMessage() {
     
     if (!message) return;
     
-    // 显示用户消息
     appendMessage(message, true);
-    
-    // 清空输入框
     input.value = '';
     
-    // 创建新的回复消息div
     currentResponse = '';
     currentMessageDiv = appendMessage('');
 
     try {
-        // 创建 POST 请求到后端
-        const response = await fetch('/api/chat', {
+        const response = await fetch('/api/message', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${accessToken}`
             },
             body: JSON.stringify({ 
-                prompt: message,
+                message: message,
                 conversation_id: currentConversationId
             })
         });
 
         if (!response.ok) {
             if (response.status === 401) {
-                // 如果是认证错误，返回登录界面
                 logout();
                 throw new Error('Session expired. Please login again.');
             }
@@ -186,6 +181,96 @@ async function sendMessage() {
         currentMessageDiv.textContent = error.message || '发生错误，请重试。';
         currentMessageDiv.style.color = 'red';
     }
+}
+
+async function uploadDocument(file, conversationId) {
+    if (!file || !conversationId) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('conversation_id', conversationId);
+
+    try {
+        const response = await fetch('/api/index', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        appendMessage(`文件 ${file.name} 上传成功！`, false);
+    } catch (error) {
+        console.error('Error uploading document:', error);
+        appendMessage(`文件上传失败: ${error.message}`, false);
+    }
+}
+
+async function clearConversationDocuments(conversationId) {
+    if (!conversationId) return;
+
+    try {
+        const response = await fetch(`/api/conversation/${conversationId}/documents`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        appendMessage('会话文档已清除！', false);
+    } catch (error) {
+        console.error('Error clearing documents:', error);
+        appendMessage(`清除文档失败: ${error.message}`, false);
+    }
+}
+
+function setupFileUpload() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.txt,.pdf,.doc,.docx';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+
+    const uploadButton = document.createElement('button');
+    uploadButton.textContent = '上传文件';
+    uploadButton.onclick = () => {
+        if (!currentConversationId) {
+            appendMessage('请先发送一条消息以创建会话', false);
+            return;
+        }
+        fileInput.click();
+    };
+
+    const clearButton = document.createElement('button');
+    clearButton.textContent = '清除文档';
+    clearButton.onclick = () => {
+        if (!currentConversationId) {
+            appendMessage('没有活动的会话', false);
+            return;
+        }
+        clearConversationDocuments(currentConversationId);
+    };
+
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            uploadDocument(file, currentConversationId);
+        }
+    };
+
+    const inputContainer = document.getElementById('input-container');
+    inputContainer.insertBefore(uploadButton, inputContainer.firstChild);
+    inputContainer.insertBefore(clearButton, inputContainer.firstChild);
 }
 
 // 添加回车键发送消息的功能
