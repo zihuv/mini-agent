@@ -1,17 +1,18 @@
-from fastapi import FastAPI, Request
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from database import engine, Base
-from auth.router import router as auth_router
-from chat.router import router as chat_router
-
-# 创建数据库表
-Base.metadata.create_all(bind=engine)
 
 # 加载环境变量
 load_dotenv()
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from auth.router import router as auth_router
+from chat.router import router as chat_router
+from database import engine, Base
+
+# 创建数据库表
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -32,10 +33,13 @@ templates = Jinja2Templates(directory="templates")
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(chat_router, prefix="/api", tags=["chat"])
 
+
 @app.get("/")
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
