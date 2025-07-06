@@ -4,14 +4,14 @@ import json
 from typing import Generator
 from uuid import uuid4
 from sqlalchemy.orm import Session
+
 from .models import Message, Conversation
-from config import Config
 
 class ChatService:
     def __init__(self):
         self.client = OpenAI(
-            api_key=Config.OPENAI_API_KEY,
-            base_url=Config.OPENAI_BASE_URL
+            api_key=os.getenv("OPENAI_API_KEY"),
+            base_url=os.getenv("OPENAI_BASE_URL")
         )
         self.model = os.getenv("OPENAI_MODEL", "deepseek-chat")
 
@@ -38,6 +38,22 @@ class ChatService:
         db.commit()
         db.refresh(conversation)
         return conversation
+
+    def get_user_conversation_history(self, user_id: int, db: Session):
+        # 获取用户的所有对话记录
+        conversations = db.query(Conversation).filter(Conversation.user_id == user_id).all()
+        
+        # 将对话记录转换为更易读的格式
+        history = []
+        for conversation in conversations:
+            messages = db.query(Message).filter(Message.conversation_id == conversation.id).order_by(Message.created_at).all()
+            history.append({
+                "conversation_id": conversation.id,
+                "created_at": conversation.created_at,
+                "messages": [{"role": m.role, "content": m.content, "created_at": m.created_at} for m in messages]
+            })
+        
+        return history
 
     def generate_response(
         self, 

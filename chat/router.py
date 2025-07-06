@@ -29,3 +29,12 @@ async def chat_endpoint(
         ),
         media_type="text/event-stream"
     )
+
+@router.get("/history")
+async def get_user_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 获取用户历史对话记录
+    history = chat_service.get_user_conversation_history(user_id=current_user.id, db=db)
+    return {"history": history}
