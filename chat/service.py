@@ -189,6 +189,12 @@ class ChatService:
     def index_document(self, content: str, conversation_id: str) -> bool:
         """将文档内容转换为向量并存储在指定会话的向量数据库中"""
         try:
+            # 限制文档长度以避免内存问题
+            max_length = 10000
+            if len(content) > max_length:
+                content = content[:max_length]
+                print(f"Warning: Document content truncated to {max_length} characters")
+            
             self._vector_db.store_vector(content, conversation_id)
             return True
         except Exception as e:
@@ -198,6 +204,12 @@ class ChatService:
     def retrieve_documents(self, query: str, conversation_id: str, top_k: int = 5) -> List[str]:
         """从指定会话中搜索与查询最相关的文档"""
         try:
+            # 限制查询长度以避免性能问题
+            max_query_length = 1000
+            if len(query) > max_query_length:
+                query = query[:max_query_length]
+                print(f"Warning: Query truncated to {max_query_length} characters")
+            
             return self._vector_db.search(query, conversation_id, top_k)
         except Exception as e:
             print(f"Error retrieving documents: {str(e)}")

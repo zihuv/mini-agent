@@ -141,6 +141,20 @@ async function sendMessage() {
     currentMessageDiv = appendMessage('');
 
     try {
+        // 检查是否有文档关联
+        let hasDocs = false;
+        if (currentConversationId) {
+            const docsResponse = await fetch(`/api/conversation/${currentConversationId}/documents`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+            if (docsResponse.ok) {
+                const docsData = await docsResponse.json();
+                hasDocs = docsData.documents && docsData.documents.length > 0;
+            }
+        }
+
         const response = await fetch('/api/message', {
             method: 'POST',
             headers: {
@@ -149,7 +163,8 @@ async function sendMessage() {
             },
             body: JSON.stringify({ 
                 message: message,
-                conversation_id: currentConversationId
+                conversation_id: currentConversationId,
+                use_rag: hasDocs // 告诉后端是否使用RAG
             })
         });
 
@@ -180,6 +195,14 @@ async function sendMessage() {
                             currentMessageDiv.textContent = currentResponse;
                             if (data.conversation_id) {
                                 currentConversationId = data.conversation_id;
+                            }
+                            
+                            // 标记RAG生成的回复
+                            if (data.rag_sources) {
+                                const ragInfo = document.createElement('div');
+                                ragInfo.className = 'rag-info';
+                                ragInfo.textContent = '基于上传文档生成';
+                                currentMessageDiv.appendChild(ragInfo);
                             }
                         } else if (data.error) {
                             currentMessageDiv.textContent = `错误: ${data.error}`;
@@ -254,38 +277,75 @@ function setupFileUpload() {
     fileInput.type = 'file';
     fileInput.accept = '.txt,.pdf,.doc,.docx';
     fileInput.style.display = 'none';
+    fileInput.multiple = true; // 支持多文件选择
     document.body.appendChild(fileInput);
 
+    // 创建上传按钮
     const uploadButton = document.createElement('button');
-    uploadButton.textContent = '上传文件';
+    uploadButton.className = 'file-upload-button';
+    uploadButton.innerHTML = '<i class="fas fa-upload"></i> 上传文件';
     uploadButton.onclick = () => {
         if (!currentConversationId) {
-            appendMessage('请先发送一条消息以创建会话', false);
+            // 自动创建新会话
+            createNewConversation().then(() => {
+                fileInput.click();
+            });
             return;
         }
         fileInput.click();
     };
 
+    // 创建清除按钮
     const clearButton = document.createElement('button');
-    clearButton.textContent = '清除文档';
+    clearButton.className = 'clear-docs-button';
+    clearButton.innerHTML = '<i class="fas fa-trash"></i> 清除文档';
     clearButton.onclick = () => {
         if (!currentConversationId) {
             appendMessage('没有活动的会话', false);
             return;
         }
-        clearConversationDocuments(currentConversationId);
-    };
-
-    fileInput.onchange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            uploadDocument(file, currentConversationId);
+        if (confirm('确定要清除当前会话的所有文档吗？')) {
+            clearConversationDocuments(currentConversationId);
         }
     };
 
+    // 文件选择处理
+    fileInput.onchange = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        // 显示上传状态
+        const statusMessage = appendMessage(`正在上传 ${files.length} 个文件...`, false);
+        
+        // 限制文件大小 (5MB)
+        const maxSize = 5 * 1024 * 1024;
+        let successCount = 0;
+        
+        for (const file of files) {
+            if (file.size > maxSize) {
+                appendMessage(`文件 ${file.name} 超过5MB限制，已跳过`, false);
+                continue;
+            }
+            
+            try {
+                await uploadDocument(file, currentConversationId);
+                successCount++;
+            } catch (error) {
+                console.error(`Error uploading ${file.name}:`, error);
+            }
+        }
+        
+        // 更新状态消息
+        statusMessage.textContent = `文件上传完成 (${successCount}/${files.length} 成功)`;
+    };
+
+    // 添加到输入容器
     const inputContainer = document.getElementById('input-container');
-    inputContainer.insertBefore(uploadButton, inputContainer.firstChild);
-    inputContainer.insertBefore(clearButton, inputContainer.firstChild);
+    const buttonGroup = document.createElement('div');
+    buttonGroup.className = 'file-button-group';
+    buttonGroup.appendChild(uploadButton);
+    buttonGroup.appendChild(clearButton);
+    inputContainer.insertBefore(buttonGroup, inputContainer.firstChild);
 }
 
 // 添加回车键发送消息的功能
@@ -340,6 +400,132 @@ async function loadConversation(conversation) {
     conversation.messages.forEach(message => {
         appendMessage(message.content, message.role === 'user', message.created_at);
     });
+    
+    // 加载会话文档列表
+    await loadConversationDocuments();
+}
+
+async function loadConversationDocuments() {
+    if (!currentConversationId) return;
+    
+    try {
+        const response = await fetch(`/api/conversation/${currentConversationId}/documents`, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            }
+        });
+        
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        const docsList = document.getElementById('documents-list');
+        
+        if (!docsList) {
+            // 创建文档列表容器
+            const sidebar = document.getElementById('sidebar');
+            const docsContainer = document.createElement('div');
+            docsContainer.id = 'documents-container';
+            docsContainer.innerHTML = `
+                <h3>会话文档</h3>
+                <div id="documents-list"></div>
+            `;
+            sidebar.appendChild(docsContainer);
+        }
+        
+        const docsListElement = document.getElementById('documents-list');
+        docsListElement.innerHTML = '';
+        
+        if (data.documents && data.documents.length > 0) {
+            data.documents.forEach(doc => {
+                const docItem = document.createElement('div');
+                docItem.className = 'document-item';
+                docItem.innerHTML = `
+                    <span>${doc.filename}</span>
+                    <button onclick="removeDocument('${currentConversationId}', '${doc.id}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                docsListElement.appendChild(docItem);
+            });
+        } else {
+            docsListElement.innerHTML = '<p>没有上传的文档</p>';
+        }
+    } catch (error) {
+        console.error('Error loading documents:', error);
+    }
+}
+
+async function removeDocument(conversationId, docId) {
+    if (!confirm('确定要删除这个文档吗？')) return;
+    
+    try {
+        const response = await fetch(`/api/conversation/${conversationId}/documents/remove`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ document_id: docId })
+        });
+        
+        if (!response.ok) {
+            throw new Error('删除失败');
+        }
+        
+        await loadConversationDocuments();
+        appendMessage('文档已删除', false);
+    } catch (error) {
+        console.error('Error removing document:', error);
+        appendMessage(`删除文档失败: ${error.message}`, false);
+    }
+}
+
+async function createNewConversation() {
+    try {
+        const response = await fetch('/api/message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({ 
+                message: '新会话已创建',
+                conversation_id: null
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('创建会话失败');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            
+            const text = decoder.decode(value);
+            const lines = text.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        if (data.conversation_id) {
+                            currentConversationId = data.conversation_id;
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing SSE data:', e);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error creating conversation:', error);
+        appendMessage(`创建会话失败: ${error.message}`, false);
+    }
 }
 
 // 初始化界面
