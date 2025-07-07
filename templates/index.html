@@ -34,6 +34,14 @@
             background-color: #f5f5f5;
             margin-right: 20%;
         }
+        .message-time {
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .message-content {
+            margin-top: 5px;
+        }
         #input-container {
             display: none;
             gap: 10px;
@@ -56,13 +64,51 @@
         .form-group {
             margin-bottom: 15px;
         }
+    
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        #sidebar {
+            width: 250px;
+            border-right: 1px solid #ccc;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 20px;
+        }
+        
+        .conversation-item {
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        .conversation-item:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .conversation-item.active {
+            background-color: #e3f2fd;
+        }
     </style>
 </head>
 <body>
-    <h1>LLM 聊天助手</h1>
-    
-    <!-- 认证容器 -->
-    <div id="auth-container">
+    <div class="app-container">
+        <div id="sidebar">
+            <h3>聊天记录</h3>
+            <div id="conversation-list"></div>
+        </div>
+        <div class="main-content">
+            <h1>LLM 聊天助手</h1>
+            
+            <!-- 认证容器 -->
+            <div id="auth-container">
         <div id="login-form">
             <h2>登录</h2>
             <div class="form-group">
@@ -97,6 +143,9 @@
         <input type="text" id="prompt-input" placeholder="输入您的问题...">
         <button onclick="sendMessage()">发送</button>
         <button onclick="logout()">退出登录</button>
+        </div>
+            </div>
+        </div>
     </div>
 
     <script src="/static/js/chat.js"></script>

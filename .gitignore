@@ -13,3 +13,4 @@ ENV/
 # other
 *.db
 .idea/
+CLAUDE.md

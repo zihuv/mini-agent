@@ -84,30 +84,45 @@ function showRegister() {
 function showLogin() {
     document.getElementById('register-form').style.display = 'none';
     document.getElementById('login-form').style.display = 'block';
+    document.getElementById('sidebar').style.display = 'none';
 }
 
 function showChat() {
     document.getElementById('auth-container').style.display = 'none';
     document.getElementById('chat-container').style.display = 'block';
     document.getElementById('input-container').style.display = 'flex';
+    document.getElementById('sidebar').style.display = 'block';
 }
 
 // 检查登录状态并初始化界面
-function initializeUI() {
+async function initializeUI() {
     if (accessToken) {
         showChat();
-        setupFileUpload();  // 添加这一行
+        setupFileUpload();
+        await loadChatHistory();
     } else {
         showLogin();
     }
 }
 
 // 聊天相关函数
-function appendMessage(message, isUser = false) {
+function appendMessage(message, isUser = false, timestamp = null) {
     const chatContainer = document.getElementById('chat-container');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
-    messageDiv.textContent = message;
+    
+    if (timestamp) {
+        const timeElement = document.createElement('div');
+        timeElement.className = 'message-time';
+        timeElement.textContent = new Date(timestamp).toLocaleString();
+        messageDiv.appendChild(timeElement);
+    }
+    
+    const contentElement = document.createElement('div');
+    contentElement.className = 'message-content';
+    contentElement.textContent = message;
+    messageDiv.appendChild(contentElement);
+    
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
     return messageDiv;
@@ -279,6 +294,53 @@ document.getElementById('prompt-input').addEventListener('keypress', (e) => {
         sendMessage();
     }
 });
+
+async function loadChatHistory() {
+    try {
+        const response = await fetch('/api/history', {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const conversationList = document.getElementById('conversation-list');
+        conversationList.innerHTML = '';
+
+        data.history.forEach(conversation => {
+            const conversationItem = document.createElement('div');
+            conversationItem.className = 'conversation-item';
+            
+            // 显示对话摘要(取第一条消息的前20个字符)
+            const summary = conversation.messages.length > 0 
+                ? conversation.messages[0].content.substring(0, 20) + (conversation.messages[0].content.length > 20 ? '...' : '')
+                : '空对话';
+                
+            conversationItem.textContent = summary;
+            conversationItem.onclick = () => loadConversation(conversation);
+            conversationList.appendChild(conversationItem);
+        });
+    } catch (error) {
+        console.error('Error loading chat history:', error);
+    }
+}
+
+async function loadConversation(conversation) {
+    const chatContainer = document.getElementById('chat-container');
+    chatContainer.innerHTML = '';
+    
+    // 更新当前会话ID
+    currentConversationId = conversation.conversation_id;
+    
+    // 加载消息
+    conversation.messages.forEach(message => {
+        appendMessage(message.content, message.role === 'user', message.created_at);
+    });
+}
 
 // 初始化界面
 initializeUI();
