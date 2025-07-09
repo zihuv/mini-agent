@@ -68,14 +68,20 @@ class VectorDB:
 class ChatService:
     _vector_db = None  # 单例模式存储VectorDB实例
 
-    def __init__(self):
-        self.client = OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            base_url=os.getenv("OPENAI_BASE_URL")
-        )
+    def __init__(self, client=None):
+        # 如果未提供客户端，则使用环境变量初始化OpenAI客户端
+        if client is None:
+            self.client = OpenAI(
+                api_key=os.getenv("OPENAI_API_KEY"),
+                base_url=os.getenv("OPENAI_BASE_URL")
+            )
+        else:
+            self.client = client
         self.model = os.getenv("OPENAI_MODEL", "deepseek-chat")
         if ChatService._vector_db is None:
             ChatService._vector_db = VectorDB()
+        self.tools = {}  # 工具名称 -> 函数实现
+        self.tool_specs = []  # OpenAI 格式的工具描述
 
     def get_or_create_conversation(
         self, 
@@ -116,6 +122,63 @@ class ChatService:
             })
         
         return history
+
+    def register_tool(self, tool_name, description, parameters, tool_function):
+        """
+        注册工具到 ChatService
+        :param tool_name: 工具名称 (e.g. "get_weather")
+        :param description: 工具描述
+        :param parameters: 参数规范 (OpenAI 格式)
+        :param tool_function: 实际执行的函数
+        """
+        self.tools[tool_name] = tool_function
+        self.tool_specs.append({
+            "type": "function",
+            "function": {
+                "name": tool_name,
+                "description": description,
+                "parameters": parameters
+            }
+        })
+    
+    def execute_tool(self, tool_name, arguments):
+        """执行工具并处理错误"""
+        try:
+            # 尝试解析 JSON 参数
+            if isinstance(arguments, str):
+                arguments = json.loads(arguments)
+                
+            # 检查工具是否存在
+            if tool_name not in self.tools:
+                return f"错误: 未知工具 '{tool_name}'"
+                
+            # 执行工具
+            return self.tools[tool_name](**arguments)
+            
+        except json.JSONDecodeError:
+            # 处理非 JSON 格式参数
+            try:
+                # 尝试从字符串中提取参数
+                params = {}
+                for param in self.get_required_params(tool_name):
+                    # 简单模式匹配提取参数值
+                    match = re.search(fr'{param}[:=]\s*([^,}}]+)', arguments)
+                    if match:
+                        params[param] = match.group(1).strip('"\' ')
+                
+                return self.tools[tool_name](**params)
+            except Exception as e:
+                return f"参数解析错误: {str(e)}"
+                
+        except Exception as e:
+            return f"工具执行错误: {str(e)}"
+    
+    def get_required_params(self, tool_name):
+        """获取工具的必需参数列表"""
+        for spec in self.tool_specs:
+            if spec["function"]["name"] == tool_name:
+                return spec["function"]["parameters"].get("required", [])
+        return []
 
     def generate_response(
         self, 
@@ -161,6 +224,8 @@ class ChatService:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
+                tools=self.tool_specs if self.tool_specs else None,
+                tool_choice="auto" if self.tool_specs else None,
                 stream=True
             )
             
@@ -175,11 +240,45 @@ class ChatService:
             
             # 处理流式响应
             for chunk in response:
-                if chunk and chunk.choices and chunk.choices[0].delta.content:
-                    content = chunk.choices[0].delta.content
-                    assistant_message.content += content
-                    db.commit()
-                    yield f"data: {json.dumps({'text': content, 'conversation_id': conversation.id})}\n\n"
+                if chunk and chunk.choices:
+                    # 检查是否调用了工具
+                    if chunk.choices[0].delta.tool_calls:
+                        for tool_call in chunk.choices[0].delta.tool_calls:
+                            tool_name = tool_call.function.name
+                            arguments = tool_call.function.arguments
+                            
+                            # 执行工具
+                            tool_result = self.execute_tool(tool_name, arguments)
+                            
+                            # 添加工具结果到消息历史
+                            messages.append({
+                                "role": "tool",
+                                "tool_call_id": tool_call.id,
+                                "name": tool_name,
+                                "content": str(tool_result)
+                            })
+                            
+                            # 重新调用 LLM 处理工具结果
+                            response = self.client.chat.completions.create(
+                                model=self.model,
+                                messages=messages,
+                                tools=self.tool_specs if self.tool_specs else None,
+                                tool_choice="auto" if self.tool_specs else None,
+                                stream=True
+                            )
+                            
+                            # 更新助手消息
+                            for chunk in response:
+                                if chunk and chunk.choices and chunk.choices[0].delta.content:
+                                    content = chunk.choices[0].delta.content
+                                    assistant_message.content += content
+                                    db.commit()
+                                    yield f"data: {json.dumps({'text': content, 'conversation_id': conversation.id})}\n\n"
+                    elif chunk.choices[0].delta.content:
+                        content = chunk.choices[0].delta.content
+                        assistant_message.content += content
+                        db.commit()
+                        yield f"data: {json.dumps({'text': content, 'conversation_id': conversation.id})}\n\n"
             
         except Exception as e:
             error_message = str(e)
