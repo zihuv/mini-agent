@@ -8,9 +8,6 @@ class FileSystemTool(ToolBase):
     def __init__(self):
         pass
 
-    async def connect(self) -> None:
-        pass
-
     async def cleanup(self) -> None:
         pass
 

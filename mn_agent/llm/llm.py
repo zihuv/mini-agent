@@ -1,6 +1,12 @@
 from typing import List, Optional
-from mn_agent.llm.utils import Message, Tool
 
+from pydantic.type_adapter import P
+from mn_agent.llm.utils import Message, Tool
+from openai import OpenAI
+import logging
+from mn_agent.llm.utils import ToolCall
+
+logger = logging.getLogger(__name__)
 
 class OpenAILLM:
     """OpenAI LLM实现"""
@@ -16,21 +22,22 @@ class OpenAILLM:
             api_messages = [msg.to_dict() for msg in messages]
             
             # 准备工具
-            api_tools = None
-            if tools:
-                api_tools = [tool.to_dict() for tool in tools]
+            api_tools = tools if tools else None
+            
+            # 构建参数
+            params = {
+                "model": self.model,
+                "messages": api_messages,
+            }
+            if api_tools:
+                params["tools"] = api_tools
+                params["tool_choice"] = "auto"
             
             # 调用API
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=api_messages,
-                tools=api_tools,
-                tool_choice="auto" if tools else None
-            )
+            response = self.client.chat.completions.create(**params)
             
             # 解析响应
-            choice = response.choices[0]
-            message = choice.message
+            message = response.choices[0].message
             
             # 构建返回消息
             result = Message(
@@ -39,17 +46,18 @@ class OpenAILLM:
             )
             
             # 处理工具调用
-            if message.tool_calls:
+            if hasattr(message, 'tool_calls') and message.tool_calls:
                 result.tool_calls = []
                 for tool_call in message.tool_calls:
-                    result.tool_calls.append({
-                        'id': tool_call.id,
-                        'type': tool_call.type,
-                        'function': {
-                            'name': tool_call.function.name,
-                            'arguments': tool_call.function.arguments
-                        }
-                    })
+                    # 转换成 ToolCall 对象
+                    tool_data = ToolCall(
+                        id=getattr(tool_call, 'id', None),
+                        type=getattr(tool_call, 'type', None),
+                        tool_name=getattr(tool_call.function, 'name', None) if hasattr(tool_call, 'function') else None,
+                        arguments=getattr(tool_call.function, 'arguments', None) if hasattr(tool_call, 'function') else None,
+                    )
+                    print("tool_data", tool_data)
+                    result.tool_calls.append(tool_data)
             
             return result
             

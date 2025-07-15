@@ -10,8 +10,6 @@ class McpClient(ToolBase):
         self.server_name = server_name
         self.url = url
         self.client = None
-
-    async def connect(self) -> None:
         self.client = Client(self.url)
 
     async def cleanup(self) -> None:

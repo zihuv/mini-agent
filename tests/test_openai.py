@@ -1,8 +1,30 @@
 from mn_agent.tools.tool_manager import ToolManager
 from mn_agent.tools.filesystem_tool import FileSystemTool
 import asyncio
+from mn_agent.agent.agent import Agent
+import dotenv
+import os
+dotenv.load_dotenv("../.env")
 
-async def main():
+
+config = {
+    "model": os.getenv("MODEL"),
+    "openai_api_key": os.getenv("SECRET_KEY"),
+    "base_url": os.getenv("BASE_URL")
+}
+
+
+
+async def test_agent():
+    agent = Agent(config)
+    # agent.tool_manager.register_tool(FileSystemTool())
+    # tools = await agent.tool_manager.list_tools()
+    #print(tools)
+    result = await agent.run("帮我查下北京的天气如何？")
+    print(result)
+
+
+async def test_tool():
     # 1. 初始化工具管理器
     tool_manager = ToolManager()
     
@@ -10,9 +32,6 @@ async def main():
     tool_manager.register_tool(FileSystemTool())
     # tool_manager.register_tool(OtherTool1())
     # tool_manager.register_tool(OtherTool2())
-    
-    # 3. 初始化所有工具
-    await tool_manager.initialize_all()
     
     try:
         # 4. 获取所有工具定义(OpenAI格式)
@@ -35,4 +54,4 @@ async def main():
         await tool_manager.cleanup_all()
 
 
-asyncio.run(main())
+asyncio.run(test_agent())

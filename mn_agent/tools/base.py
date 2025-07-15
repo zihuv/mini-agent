@@ -6,11 +6,6 @@ class ToolBase(ABC):
     """工具基类"""
     
     @abstractmethod
-    async def connect(self):
-        """初始化连接"""
-        pass
-    
-    @abstractmethod
     async def cleanup(self):
         """清理资源"""
         pass
