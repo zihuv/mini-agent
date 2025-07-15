@@ -2,12 +2,26 @@ from typing import List, Dict, Any, Type
 from dataclasses import asdict
 
 from mn_agent.tools.base import ToolBase
+from mn_agent.tools.mcp_client import McpClient
+import os
+import json
 
 class ToolManager:
     """管理所有工具实现类，并提供统一的工具访问接口"""
     
     def __init__(self):
         self._tool_implementations: List[ToolBase] = []
+        # 读取根目录下的 mcp_config.json
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'mcp_config.json')
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            mcp_servers = config.get('mcpServers', {})
+            for server_name, server_info in mcp_servers.items():
+                url = server_info.get('url')
+                if url:
+                    mcp_client = McpClient(server_name, url)
+                    self.register_tool(mcp_client)
     
     def register_tool(self, tool_impl: ToolBase):
         """注册一个工具实现类"""

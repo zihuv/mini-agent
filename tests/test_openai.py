@@ -20,9 +20,13 @@ async def main():
         print(openai_tools)
         
         # 5. 调用工具示例
+        # result = await tool_manager.call_tool(
+        #     full_tool_name="file_system.list_files",
+        #     tool_args={"directory": "./"}
+        # )
         result = await tool_manager.call_tool(
-            full_tool_name="file_system.list_files",
-            tool_args={"directory": "./"}
+            full_tool_name="amap-maps.maps_weather",
+            tool_args={"city": "北京"}
         )
         print(result)
         

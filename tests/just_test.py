@@ -1,8 +1,24 @@
-import os
+import asyncio
+from fastmcp import Client, FastMCP
 
-def list_files(directory: str) -> str:
-        """列出指定目录下的所有文件，每行一个文件名"""
-        import os
-        return '\n'.join(os.listdir(directory))
+# HTTP server
+client = Client("https://mcp.api-inference.modelscope.net/8d5e6040aeb344/sse")
 
-print(list_files("./"))
+async def main():
+    async with client:
+        # Basic server interaction
+        await client.ping()
+                
+        # List available operations
+        # tools = await client.list_tools()
+        # print(tools)
+       
+       
+        print(await client.call_tool("maps_weather", {"city": "北京"}))
+
+
+        # Execute operations
+        # result = await client.call_tool("example_tool", {"param": "value"})
+        # print(result)
+
+asyncio.run(main())
