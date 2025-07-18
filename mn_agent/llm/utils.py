@@ -21,7 +21,6 @@ class ToolCall:
 
 
 class Tool(TypedDict, total=False):
-    server_name: str
     tool_name: Required[str]
     description: Required[str]
     parameters: Dict[str, Any]

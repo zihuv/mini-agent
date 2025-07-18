@@ -4,6 +4,7 @@ from mn_agent.llm.llm import OpenAILLM
 from mn_agent.tools.tool_manager import ToolManager
 from mn_agent.llm.utils import Message
 import json
+from mn_agent.config.agent_config import AgentConfig
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -12,10 +13,10 @@ logger = logging.getLogger(__name__)
 class Agent:
     """LLM+工具+记忆+规划"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: AgentConfig):
         self.config = config
-        self.max_rounds = config.get("max_rounds", 10)
-        self.max_errors = config.get("max_errors", 3)
+        self.max_rounds = config.max_rounds
+        self.max_errors = config.max_errors
         self.should_stop = False
         self.round = 0
         self.error_count = 0
@@ -23,21 +24,21 @@ class Agent:
         self.llm = self._init_llm()
         # 初始化工具管理器
         self.tool_manager = ToolManager()
-        logger.info(f"Agent初始化完成，模型: {self.config.get('model', 'unknown')}")
+        logger.info(f"Agent初始化完成，模型: {self.config.model}")
 
     def _init_llm(self) -> OpenAILLM:
         """初始化LLM"""
-        api_key = self.config.get("openai_api_key")
+        api_key = self.config.openai_api_key
         if not api_key:
             raise ValueError("OpenAI API key未配置")
-        model = self.config.get("model", "gpt-3.5-turbo")
-        base_url = self.config.get("base_url", None)
+        model = self.config.model
+        base_url = self.config.base_url
         return OpenAILLM(api_key, model, base_url)
 
     def _prepare_messages(self, inputs: Union[str, List[Message]]) -> List[Message]:
         """准备消息列表"""
         if isinstance(inputs, str):
-            system_prompt = self.config.get("system_prompt", "你是一个有用的助手。")
+            system_prompt = self.config.system_prompt
             return [
                 Message(role="system", content=system_prompt),
                 Message(role="user", content=inputs),

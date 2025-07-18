@@ -1,24 +1,21 @@
 import asyncio
 from fastmcp import Client, FastMCP
 
+
+config = {
+  "mcpServers": {
+    "amap-maps": {
+      "type": "sse",
+      "url": "https://mcp.api-inference.modelscope.net/1a8578e121ae4e/sse"
+    }
+  }
+}
+print(type(config))
 # HTTP server
-client = Client("https://mcp.api-inference.modelscope.net/8d5e6040aeb344/sse")
+client = Client(config)
 
 async def main():
     async with client:
-        # Basic server interaction
-        await client.ping()
-                
-        # List available operations
-        # tools = await client.list_tools()
-        # print(tools)
-       
-       
-        print(await client.call_tool("maps_weather", {"city": "北京"}))
-
-
-        # Execute operations
-        # result = await client.call_tool("example_tool", {"param": "value"})
-        # print(result)
+        print(await client.list_tools())
 
 asyncio.run(main())

@@ -5,6 +5,7 @@ from mn_agent.agent.agent import Agent
 import dotenv
 import os
 dotenv.load_dotenv("../.env")
+from mn_agent.config.agent_config import AgentConfig
 
 
 config = {
@@ -16,10 +17,9 @@ config = {
 
 
 async def test_agent():
-    agent = Agent(config)
-    # agent.tool_manager.register_tool(FileSystemTool())
-    # tools = await agent.tool_manager.list_tools()
-    #print(tools)
+    agent = Agent(AgentConfig.from_dict(config))
+    tools = await agent.tool_manager.list_tools()
+    print(tools)
     result = await agent.run("帮我查下北京的天气如何？")
     print(result)
 
@@ -40,11 +40,11 @@ async def test_tool():
         
         # 5. 调用工具示例
         # result = await tool_manager.call_tool(
-        #     full_tool_name="file_system.list_files",
+        #     tool_name="list_files",
         #     tool_args={"directory": "./"}
         # )
         result = await tool_manager.call_tool(
-            full_tool_name="amap-maps.maps_weather",
+            tool_name="maps_weather",
             tool_args={"city": "北京"}
         )
         print(result)
@@ -54,4 +54,4 @@ async def test_tool():
         await tool_manager.cleanup_all()
 
 
-asyncio.run(test_agent())
+asyncio.run(test_tool())

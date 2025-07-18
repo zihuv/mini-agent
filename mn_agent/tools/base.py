@@ -11,11 +11,11 @@ class ToolBase(ABC):
         pass
     
     @abstractmethod
-    async def get_tools(self) -> Dict[str, List[Tool]]:
+    async def get_tools(self) -> List[Tool]:
         """获取工具定义"""
         pass
     
     @abstractmethod
-    async def call_tool(self, server_name: str, *, tool_name: str, tool_args: dict) -> str:
+    async def call_tool(self, tool_name: str, tool_args: dict) -> str:
         """调用工具"""
         pass
