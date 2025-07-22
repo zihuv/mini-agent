@@ -16,6 +16,8 @@ class AgentConfig:
     # 运行参数
     max_rounds: int = 10   
     max_errors: int = 3
+    # 文档路径（RAG）
+    document_path: Optional[str] = None
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> 'AgentConfig':
         """从字典创建配置对象"""
@@ -30,6 +32,7 @@ class AgentConfig:
             "system_prompt": self.system_prompt,
             "max_rounds": self.max_rounds,
             "max_errors": self.max_errors,
+            "document_path": self.document_path,
         }
     
     def validate(self) -> None:
@@ -39,4 +42,5 @@ class AgentConfig:
         if self.max_rounds <= 0:
             raise ValueError("max_rounds必须大于0")
         if self.max_errors <= 0:
-            raise ValueError("max_errors必须大于0") 
+            raise ValueError("max_errors必须大于0")
+        # document_path 可选，不做强制校验 

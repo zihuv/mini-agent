@@ -5,6 +5,10 @@ from mn_agent.tools.tool_manager import ToolManager
 from mn_agent.llm.utils import Message
 import json
 from mn_agent.config.agent_config import AgentConfig
+import sys
+from mn_agent.rag.text_chunker import TextFileChunker
+from mn_agent.rag.embed import VectorDB
+from mn_agent.rag.rag_engine import rag_answer
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +24,7 @@ class Agent:
         self.should_stop = False
         self.round = 0
         self.error_count = 0
+        self.document_path = config.document_path
         # 初始化LLM
         self.llm = self._init_llm()
         # 初始化工具管理器
@@ -99,6 +104,12 @@ class Agent:
             self.should_stop = False
             self.round = 0
             self.error_count = 0
+            # 如果指定了文档路径，走RAG流程
+            if self.document_path:
+                question = inputs if isinstance(inputs, str) else (inputs[-1].content if inputs else "")
+                response = rag_answer(self.document_path, question, self.config)
+                return [Message(role="assistant", content=response)]
+            # 否则走原有LLM流程
             # 准备消息
             messages = self._prepare_messages(inputs)
             # 显示初始消息
