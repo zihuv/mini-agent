@@ -1,22 +1,15 @@
-import sys
-import os
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 import asyncio
-from mini_agent.workflow.engine import WorkflowEngine
-from mini_agent.workflow.nodes import (
-    TriggerManualNode,
-    TransformMapNode,   
-    ActionAIAgentNode,
-    LogicSwitchNode,
-    ActionHttpNode,
-)
-from dotenv import load_dotenv
+import os
+import sys
 
+from dotenv import load_dotenv
 
 load_dotenv()
 
+from mini_agent.workflow.engine import WorkflowEngine
+from mini_agent.workflow.nodes import (ActionAIAgentNode, ActionHttpNode,
+                                       LogicSwitchNode, TransformMapNode,
+                                       TriggerManualNode)
 
 # 注册节点类型
 node_registry = {
@@ -55,7 +48,7 @@ def build_ai_switch_http_workflow():
                 "type": "logic/switch",
                 "name": "分支选择",
                 "config": {
-                    "expression": "context.get('ai_decision', {}).get('decision', 'A')",
+                    "expression": "ai_decision['decision']",
                     "cases": {"A": "http_a", "B": "http_b"},
                     "default": "http_a",
                 },
@@ -93,10 +86,10 @@ async def test_ai_switch_http_workflow():
     workflow_def = build_ai_switch_http_workflow()
     engine = WorkflowEngine(workflow_def, node_registry)
     result_a = await engine.execute_workflow(
-        initial_context={"test": {"path": "A"}}
+        initial_context={"test": {"path": "True"}}
     )  # 走A
     result_b = await engine.execute_workflow(
-        initial_context={"test": {"path": "B"}}
+        initial_context={"test": {"path": "False"}}
     )  # 走B
     print("AI决策与HTTP调用工作流执行结果:", result_a)
     print("执行摘要:", result_a.get("summary"))
