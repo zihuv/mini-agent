@@ -1,10 +1,10 @@
 from typing import List, Optional
 
 from pydantic.type_adapter import P
-from mn_agent.llm.utils import Message, Tool
+from mini_agent.llm.utils import Message, Tool
 from openai import OpenAI
 import logging
-from mn_agent.llm.utils import ToolCall
+from mini_agent.llm.utils import ToolCall
 
 logger = logging.getLogger(__name__)
 

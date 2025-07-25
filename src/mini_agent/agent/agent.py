@@ -1,14 +1,14 @@
 import logging
 from typing import Any, Dict, List, Union
-from mn_agent.llm.llm import OpenAILLM
-from mn_agent.tools.tool_manager import ToolManager
-from mn_agent.llm.utils import Message
+from mini_agent.llm.llm import OpenAILLM
+from mini_agent.tools.tool_manager import ToolManager
+from mini_agent.llm.utils import Message
 import json
-from mn_agent.config.agent_config import AgentConfig
+from mini_agent.config.agent_config import AgentConfig
 import sys
-from mn_agent.rag.text_chunker import TextFileChunker
-from mn_agent.rag.embed import VectorDB
-from mn_agent.rag.rag_engine import rag_answer
+from mini_agent.rag.text_chunker import TextFileChunker
+from mini_agent.rag.embed import VectorDB
+from mini_agent.rag.rag_engine import rag_answer
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)

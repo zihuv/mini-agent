@@ -1,8 +1,8 @@
 from .text_chunker import TextFileChunker
 from .embed import VectorDB
-from mn_agent.llm.llm import OpenAILLM
-from mn_agent.llm.utils import Message
-from mn_agent.config.agent_config import AgentConfig
+from mini_agent.llm.llm import OpenAILLM
+from mini_agent.llm.utils import Message
+from mini_agent.config.agent_config import AgentConfig
 from typing import Optional
 
 # 可选：你可以用自己的 LLM 封装，也可以用 AIChat 方式

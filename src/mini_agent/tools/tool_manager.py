@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Type
 
-from mn_agent.tools.base import ToolBase
-from mn_agent.tools.mcp_client import McpClient
+from mini_agent.tools.base import ToolBase
+from mini_agent.tools.mcp_client import McpClient
 import os
 import json
 import logging

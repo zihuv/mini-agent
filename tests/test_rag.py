@@ -1,8 +1,8 @@
 import os
-from mn_agent.rag.rag_engine import rag_answer
-from mn_agent.config.agent_config import AgentConfig
+from mini_agent.rag.rag_engine import rag_answer
+from mini_agent.config.agent_config import AgentConfig
 import dotenv
-dotenv.load_dotenv("../.env")
+dotenv.load_dotenv()
 
 def test_rag_answer():
     # 创建一个临时测试文档

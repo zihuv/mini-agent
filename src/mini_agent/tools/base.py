@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any
-from mn_agent.llm.utils import Tool
+from mini_agent.llm.utils import Tool
 
 class ToolBase(ABC):
     """工具基类"""

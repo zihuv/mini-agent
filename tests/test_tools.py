@@ -1,11 +1,11 @@
-from mn_agent.tools.tool_manager import ToolManager
-from mn_agent.tools.filesystem_tool import FileSystemTool
+from mini_agent.tools.tool_manager import ToolManager
+from mini_agent.tools.filesystem_tool import FileSystemTool
 import asyncio
-from mn_agent.agent.agent import Agent
+from mini_agent.agent.agent import Agent
 import dotenv
 import os
-dotenv.load_dotenv("../.env")
-from mn_agent.config.agent_config import AgentConfig
+dotenv.load_dotenv()
+from mini_agent.config.agent_config import AgentConfig
 
 
 config = {

@@ -5,6 +5,7 @@ import re
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import asyncio
+import uuid
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -18,6 +19,7 @@ class WorkflowContext:
         self.execution_history = []
         self.errors = []
         self.start_time = datetime.now()
+        self.instance_id = str(uuid.uuid4())  # 新增实例ID
     
     def update(self, new_data: Dict[str, Any]):
         """更新上下文数据"""
@@ -166,42 +168,46 @@ class WorkflowEngine:
 
     def _log_node_input(self, node_id: str, node_type: str, input_data: Dict[str, Any]):
         """记录节点输入"""
-        logger.info(f"节点执行开始 - ID: {node_id}, 类型: {node_type}")
-        logger.debug(f"节点输入数据: {input_data}")
+        logger.info(f"[实例ID: {self.context.instance_id}] 节点执行开始 - ID: {node_id}, 类型: {node_type}")
+        logger.debug(f"[实例ID: {self.context.instance_id}] 节点输入数据: {json.dumps(input_data, ensure_ascii=False)}")
 
     def _log_node_output(self, node_id: str, output_data: Dict[str, Any]):
         """记录节点输出"""
-        logger.info(f"节点执行成功 - ID: {node_id}")
-        logger.debug(f"节点输出数据: {output_data}")
+        logger.info(f"[实例ID: {self.context.instance_id}] 节点执行成功 - ID: {node_id}")
+        logger.debug(f"[实例ID: {self.context.instance_id}] 节点输出数据: {json.dumps(output_data, ensure_ascii=False)}")
 
     def _log_node_error(self, node_id: str, node_type: str, error: Exception):
         """记录节点错误"""
-        logger.error(f"节点执行失败 - ID: {node_id}, 类型: {node_type}")
-        logger.error(f"错误信息: {str(error)}")
-        logger.debug(f"错误堆栈: {traceback.format_exc()}")
+        logger.error(f"[实例ID: {self.context.instance_id}] 节点执行失败 - ID: {node_id}, 类型: {node_type}")
+        logger.error(f"[实例ID: {self.context.instance_id}] 错误信息: {str(error)}")
+        logger.debug(f"[实例ID: {self.context.instance_id}] 错误堆栈: {traceback.format_exc()}")
 
     async def execute_node_with_retry(self, node: Dict[str, Any]) -> Dict[str, Any]:
         """带重试机制的节点执行"""
         node_id = node['id']
         node_type = node['type']
-        
+        last_exception = None
         for attempt in range(self.max_retries):
             try:
                 # 获取节点执行器
                 node_executor = self.get_node_executor(node_type)
                 if not node_executor:
                     raise Exception(f'未注册节点类型: {node_type}')
-                
                 # 执行节点
                 result = await node_executor.execute(node, self.context.data)
                 return result
-                
             except Exception as e:
+                last_exception = e
                 if attempt < self.max_retries - 1:
                     logger.warning(f"节点 {node_id} 执行失败，尝试重试 ({attempt + 1}/{self.max_retries}): {str(e)}")
                     await asyncio.sleep(self.retry_delay * (attempt + 1))  # 指数退避
                 else:
-                    raise e
+                    break
+        # 如果所有重试都失败，抛出最后一次异常
+        if last_exception:
+            raise last_exception
+        # 理论上不会到这里，兜底返回空dict
+        return {}
 
     async def execute_workflow(self, initial_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """执行完整的工作流"""
@@ -282,9 +288,10 @@ class WorkflowEngine:
             # 根据配置决定是否继续执行
             error_handling = node.get('errorHandling', 'stop')
             if error_handling == 'stop':
+                logger.info(f"[实例ID: {self.context.instance_id}] 节点 {node_id} 执行失败，工作流终止")
                 raise e
             elif error_handling == 'continue':
-                logger.warning(f"节点 {node_id} 执行失败，但继续执行后续节点")
+                logger.warning(f"[实例ID: {self.context.instance_id}] 节点 {node_id} 执行失败，但继续执行后续节点")
             # 可以添加更多错误处理策略
 
     async def execute(self, initial_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

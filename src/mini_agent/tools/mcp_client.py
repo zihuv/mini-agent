@@ -1,6 +1,6 @@
 from typing import Dict, List
 from .base import ToolBase
-from mn_agent.llm.utils import Tool
+from mini_agent.llm.utils import Tool
 from fastmcp import Client
 
 class McpClient(ToolBase):

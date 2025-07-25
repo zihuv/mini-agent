@@ -4,8 +4,8 @@ import json
 import re
 from datetime import datetime
 from typing import Dict, Any, List
-from mn_agent.agent.agent import Agent
-from mn_agent.config.agent_config import AgentConfig
+from mini_agent.agent.agent import Agent
+from mini_agent.config.agent_config import AgentConfig
 
 class BaseNode:
     @staticmethod
@@ -171,12 +171,9 @@ class ActionAIAgentNode(BaseNode):
                 "system_prompt": config.get('system_prompt', '你是一个有用的助手。')
             }
             
-            print("agent_config", agent_config)
             agent = Agent(AgentConfig.from_dict(agent_config))
-            print("agent", agent)
             # 将用户提示作为输入传递给Agent
             result = await agent.run(user_prompt)
-            print("result", result)
             # 处理输出映射
             output_mapping = config.get('outputMapping', {})
             mapped_result = {}
